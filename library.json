@@ -1,0 +1,25 @@
+{
+	"name": "OSK NetworkManager",
+	"keywords": "osk, network manager, wifi, wi-fi, BLE",
+	"description": "Allows to set up WiFi credentials on the device via BLE using an Android app.",
+	"license": "GPL",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/OpenSmartKit/OSK_NetworkManager"
+	},
+	"authors": [
+		{
+			"name": "baltazorr",
+			"email": "baltazorr@gmail.com",
+			"maintainer": true
+		},
+		{
+			"name": "strange_v",
+			"email": "strange.rand@gmail.com",
+			"maintainer": true
+		}
+	],
+	"version": "0.1.0",
+	"frameworks": "arduino",
+	"platforms": "espressif32"
+}
