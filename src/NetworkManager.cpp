@@ -41,17 +41,17 @@ void NetworkManager::initBLE()
 
     bleServer = NimBLEDevice::createServer();
 
-    NimBLEService *pOSKService = bleServer->createService("A001");
+    NimBLEService *pOSKService = bleServer->createService(BLE_SERVICE_MAIN_ADDR);
 
     // Get WiFi List Characteristic
     NimBLECharacteristic *pWiFiListCharacteristic = pOSKService->createCharacteristic(
-        "B001",
+        BLE_CHAR_SCAN_WIFI_ADDR,
         NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::NOTIFY);
     pWiFiListCharacteristic->setCallbacks(_cbGetWifiList);
 
     // Set WiFi Name
     NimBLECharacteristic *pWiFiNameCharacteristic = pOSKService->createCharacteristic(
-        "B002",
+        BLE_CHAR_WIFI_NAME_ADDR,
         NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::READ);
     std::string wiFiName(_settings->getWifiName());
     pWiFiNameCharacteristic->setValue(wiFiName);
@@ -59,13 +59,13 @@ void NetworkManager::initBLE()
 
     // Set WiFi Pass
     NimBLECharacteristic *pWiFiPassCharacteristic = pOSKService->createCharacteristic(
-        "B003",
+        BLE_CHAR_WIFI_PASS_ADDR,
         NIMBLE_PROPERTY::WRITE);
     pWiFiPassCharacteristic->setCallbacks(_cbSaveWifiPassword);
 
     // Set Device Name
     NimBLECharacteristic *pDeviceNameCharacteristic = pOSKService->createCharacteristic(
-        "B004",
+        BLE_CHAR_NAME_ADDR,
         NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::READ);
     std::string deviceName(_settings->getModuleName());
     pDeviceNameCharacteristic->setValue(deviceName);
@@ -73,7 +73,12 @@ void NetworkManager::initBLE()
 
     // Get Device IP
     NimBLECharacteristic *pIPCharacteristic = pOSKService->createCharacteristic(
-        "B005",
+        BLE_CHAR_IP_ADDR,
+        NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::NOTIFY);
+
+    // Debug info
+    NimBLECharacteristic *pDebugCharacteristic = pOSKService->createCharacteristic(
+        BLE_CHAR_DEBUG_ADDR,
         NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::NOTIFY);
 
     pOSKService->start();
@@ -118,8 +123,8 @@ void NetworkManager::taskScanWifi(void *pvParameters)
         Serial.print("Found WiFis: ");
         Serial.println(n);
 
-        NimBLEService *pSvc = self->bleServer->getServiceByUUID("A001");
-        NimBLECharacteristic *pChr = pSvc->getCharacteristic("B001");
+        NimBLEService *pSvc = self->bleServer->getServiceByUUID(BLE_SERVICE_MAIN_ADDR);
+        NimBLECharacteristic *pChr = pSvc->getCharacteristic(BLE_CHAR_SCAN_WIFI_ADDR);
 
         for (int i = 0; i < n; ++i)
         {
@@ -160,8 +165,8 @@ void NetworkManager::taskNotifyIpChange(void *pvParameters)
     {
         xEventGroupWaitBits(self->_eg, EVENT_IP_CHANGE, pdTRUE, pdTRUE, portMAX_DELAY);
 
-        NimBLEService *pSvc = self->bleServer->getServiceByUUID("A001");
-        NimBLECharacteristic *pChr = pSvc->getCharacteristic("B005");
+        NimBLEService *pSvc = self->bleServer->getServiceByUUID(BLE_SERVICE_MAIN_ADDR);
+        NimBLECharacteristic *pChr = pSvc->getCharacteristic(BLE_CHAR_IP_ADDR);
 
         if (WiFi.isConnected())
         {
@@ -187,4 +192,16 @@ void NetworkManager::notifyWifiPaswordReady()
     } else {
         connect();
     }
+}
+
+void NetworkManager::debug(const std::string &value)
+{
+    NimBLEService *pSvc = bleServer->getServiceByUUID(BLE_SERVICE_MAIN_ADDR);
+    NimBLECharacteristic *pChr = pSvc->getCharacteristic(BLE_CHAR_DEBUG_ADDR);
+
+    pChr->setValue(value);
+    Serial.print("BLE Debug: ");
+    Serial.println(value.c_str());
+
+    pChr->notify();
 }

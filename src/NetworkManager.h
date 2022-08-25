@@ -21,6 +21,14 @@ extern "C"
 #define INTERNAL_TASK_PRIORITY 3
 #define INTERNAL_TASK_CORE 1
 
+#define BLE_SERVICE_MAIN_ADDR "A001"
+#define BLE_CHAR_SCAN_WIFI_ADDR "B001"
+#define BLE_CHAR_WIFI_NAME_ADDR "B002"
+#define BLE_CHAR_WIFI_PASS_ADDR "B003"
+#define BLE_CHAR_NAME_ADDR "B004"
+#define BLE_CHAR_IP_ADDR "B005"
+#define BLE_CHAR_DEBUG_ADDR "D001"
+
 class NetworkManager : public SaveWiFiPasswordNotifier
 {
 public:
@@ -30,6 +38,7 @@ public:
     void initBLE();
     void connect();
     void disconnect();
+    void debug(const std::string &value);
 
 private:
     static NetworkManager *_instance;
