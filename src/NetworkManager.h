@@ -16,6 +16,7 @@ extern "C"
 #include <callbacks/GetWifiListCallbacks.hpp>
 #include <callbacks/SaveWifiPasswordCallbacks.hpp>
 #include <callbacks/SaveWiFiPasswordNotifier.h>
+#include <Debug.h>
 
 #define INTERNAL_TASK_STACK 10000
 #define INTERNAL_TASK_PRIORITY 3
@@ -46,7 +47,7 @@ private:
     static void taskScanWifi(void *pvParameters);
     static void taskNotifyIpChange(void *pvParameters);
     static void WiFiEvent(WiFiEvent_t event);
-
+    
     NimBLEServer *bleServer;
     NimBLEService *bleService;
     NimBLECharacteristic *bleCharacteristic;

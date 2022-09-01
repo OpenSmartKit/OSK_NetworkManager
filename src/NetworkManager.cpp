@@ -89,7 +89,7 @@ void NetworkManager::initBLE()
     pAdvertising->setScanResponse(true);
     pAdvertising->start();
 
-    Serial.println("Advertising Started");
+    DEBUG_MSG("Advertising Started");
 }
 
 void NetworkManager::connect()
@@ -97,7 +97,7 @@ void NetworkManager::connect()
     WiFi.mode(WIFI_STA);
     
     if (strcmp(_settings->getWifiName(), "") != 0) {
-        Serial.println("Connect to WiFi...");
+        DEBUG_MSG("Connect to WiFi...");
         WiFi.begin(_settings->getWifiName(), _settings->getWifiPassword());
     }
 }
@@ -105,7 +105,7 @@ void NetworkManager::connect()
 void NetworkManager::disconnect()
 {
     WiFi.disconnect();
-    Serial.println("WiFi Disconnected.");
+    DEBUG_MSG("WiFi Disconnected.");
 }
 
 void NetworkManager::taskScanWifi(void *pvParameters)
@@ -118,10 +118,11 @@ void NetworkManager::taskScanWifi(void *pvParameters)
 
         WiFi.mode(WIFI_STA);
 
-        Serial.println("Start WiFi scanning...");
+        DEBUG_MSG("Start WiFi scanning...");
+        
         int n = WiFi.scanNetworks();
-        Serial.print("Found WiFis: ");
-        Serial.println(n);
+
+        DEBUG_MSG("Found WiFis: ");
 
         NimBLEService *pSvc = self->bleServer->getServiceByUUID(BLE_SERVICE_MAIN_ADDR);
         NimBLECharacteristic *pChr = pSvc->getCharacteristic(BLE_CHAR_SCAN_WIFI_ADDR);
@@ -129,7 +130,7 @@ void NetworkManager::taskScanWifi(void *pvParameters)
         for (int i = 0; i < n; ++i)
         {
             std::string wifiName(WiFi.SSID(i).c_str());
-            Serial.println(wifiName.c_str());
+            DEBUG_MSG(wifiName.c_str());
             pChr->setValue(wifiName);
             pChr->notify();
             delay(10);
@@ -138,7 +139,7 @@ void NetworkManager::taskScanWifi(void *pvParameters)
         pChr->setValue('+');
         pChr->notify();
 
-        Serial.println("Done WiFi scanning.");
+        DEBUG_MSG("Done WiFi scanning.");
     }
 }
 
@@ -172,9 +173,15 @@ void NetworkManager::taskNotifyIpChange(void *pvParameters)
         {
             std::string ip(WiFi.localIP().toString().c_str());
             pChr->setValue(ip);
-            Serial.println("Connect to WiFi successfully.");
-            Serial.print("IP: ");
-            Serial.println(ip.c_str());
+            DEBUG_MSG("Connect to WiFi successfully.");
+            DEBUG_MSG("IP: ");
+            DEBUG_MSG(ip.c_str());
+            
+            #if DEBUG_USE_TELNET
+                telnet.begin(23);
+                DEBUG_MSG(WiFi.localIP().toString());
+                DEBUG_MSG("Telnet server started.");
+            #endif
         }
         else
         {
@@ -200,8 +207,7 @@ void NetworkManager::debug(const std::string &value)
     NimBLECharacteristic *pChr = pSvc->getCharacteristic(BLE_CHAR_DEBUG_ADDR);
 
     pChr->setValue(value);
-    Serial.print("BLE Debug: ");
-    Serial.println(value.c_str());
-
     pChr->notify();
+
+    DEBUG_MSG(value.c_str());
 }
