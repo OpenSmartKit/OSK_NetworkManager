@@ -31,13 +31,34 @@ void NetworkManager::init(NetworkManagerSettings *settings)
 
 NetworkManager::NetworkManager()
 {
+    DEBUG_MSG("Chip Revision: ");
+    DEBUG_MSG_NL(ESP.getChipRevision());
+
+    char buffer[12];
+    uint64_t chipid = ESP.getEfuseMac();
+    sprintf(buffer, "%04X%08X", (uint16_t)(chipid >> 32), (uint32_t)chipid);
+    DEBUG_MSG("ESP32 Chip ID = ");
+    DEBUG_MSG_NL(buffer);
+
+    DEBUG_MSG("Flash chip size: ");
+    DEBUG_MSG_NL(ESP.getFlashChipSize());
+
+    DEBUG_MSG("Flash chip frequency: ");
+    DEBUG_MSG_NL(ESP.getFlashChipSpeed());
+
+    DEBUG_MSG("SDK Version: ");
+    DEBUG_MSG_NL(ESP.getSdkVersion());
 }
 
 void NetworkManager::initBLE()
 {
     char buffer[16];
-    sprintf(buffer, "OSK_%02X", ESP.getEfuseMac());
+    uint64_t chipid = ESP.getEfuseMac();
+    sprintf(buffer, "OSK_%04X%08X", (uint16_t)(chipid >> 32), (uint32_t)chipid);
     NimBLEDevice::init(buffer);
+
+    DEBUG_MSG("BLE Name: ");
+    DEBUG_MSG_NL(buffer);
 
     bleServer = NimBLEDevice::createServer();
 
@@ -89,7 +110,7 @@ void NetworkManager::initBLE()
     pAdvertising->setScanResponse(true);
     pAdvertising->start();
 
-    DEBUG_MSG("Advertising Started");
+    DEBUG_MSG_NL("Advertising Started");
 }
 
 void NetworkManager::connect()
@@ -97,15 +118,16 @@ void NetworkManager::connect()
     WiFi.mode(WIFI_STA);
     
     if (strcmp(_settings->getWifiName(), "") != 0) {
-        DEBUG_MSG("Connect to WiFi...");
+        DEBUG_MSG_NL("Connect to WiFi...");
         WiFi.begin(_settings->getWifiName(), _settings->getWifiPassword());
     }
 }
 
 void NetworkManager::disconnect()
 {
+    telnet.stop();
     WiFi.disconnect();
-    DEBUG_MSG("WiFi Disconnected.");
+    DEBUG_MSG_NL("WiFi Disconnected.");
 }
 
 void NetworkManager::taskScanWifi(void *pvParameters)
@@ -118,7 +140,7 @@ void NetworkManager::taskScanWifi(void *pvParameters)
 
         WiFi.mode(WIFI_STA);
 
-        DEBUG_MSG("Start WiFi scanning...");
+        DEBUG_MSG_NL("Start WiFi scanning...");
         
         int n = WiFi.scanNetworks();
 
@@ -139,7 +161,7 @@ void NetworkManager::taskScanWifi(void *pvParameters)
         pChr->setValue('+');
         pChr->notify();
 
-        DEBUG_MSG("Done WiFi scanning.");
+        DEBUG_MSG_NL("Done WiFi scanning.");
     }
 }
 
@@ -173,14 +195,13 @@ void NetworkManager::taskNotifyIpChange(void *pvParameters)
         {
             std::string ip(WiFi.localIP().toString().c_str());
             pChr->setValue(ip);
-            DEBUG_MSG("Connect to WiFi successfully.");
+            DEBUG_MSG("Connect to WiFi successfully. ");
             DEBUG_MSG("IP: ");
-            DEBUG_MSG(ip.c_str());
+            DEBUG_MSG_NL(ip.c_str());
             
             #if DEBUG_USE_TELNET
                 telnet.begin(23);
-                DEBUG_MSG(WiFi.localIP().toString());
-                DEBUG_MSG("Telnet server started.");
+                DEBUG_MSG_NL("Telnet server started.");
             #endif
         }
         else
@@ -209,5 +230,5 @@ void NetworkManager::debug(const std::string &value)
     pChr->setValue(value);
     pChr->notify();
 
-    DEBUG_MSG(value.c_str());
+    DEBUG_MSG_NL(value.c_str());
 }
