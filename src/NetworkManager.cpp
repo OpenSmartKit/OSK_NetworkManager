@@ -114,7 +114,7 @@ void NetworkManager::initBLE()
     DEBUG_MSG_NL("Set CUSTOM CHARS new!");
     */
     if (_customBLECallback) {
-        DBG("Call callback custom BLE!");
+        DBG_S("Call callback custom BLE!");
         _customBLECallback();
     }
 
@@ -126,7 +126,7 @@ void NetworkManager::initBLE()
     pAdvertising->setScanResponse(true);
     pAdvertising->start();
 
-    DBG("Advertising Started");
+    DBG_S("Advertising Started");
 }
 
 void NetworkManager::connect()
@@ -134,7 +134,7 @@ void NetworkManager::connect()
     WiFi.mode(WIFI_STA);
     
     if (strcmp(_settings->getWifiName(), "") != 0) {
-        DBG("Connect to WiFi...");
+        DBG_S("Connect to WiFi...");
         WiFi.begin(_settings->getWifiName(), _settings->getWifiPassword());
     }
 }
@@ -143,7 +143,7 @@ void NetworkManager::disconnect()
 {
     telnet.stop();
     WiFi.disconnect();
-    DBG("WiFi Disconnected.");
+    DBG_S("WiFi Disconnected.");
 }
 
 void NetworkManager::taskScanWifi(void *pvParameters)
@@ -156,11 +156,11 @@ void NetworkManager::taskScanWifi(void *pvParameters)
 
         WiFi.mode(WIFI_STA);
 
-        DBG("Start WiFi scanning...");
+        DBG_S("Start WiFi scanning...");
         
         int n = WiFi.scanNetworks();
 
-        DBG("Found WiFis: ");
+        DBG_S("Found WiFis: ");
 
         NimBLEService *pSvc = self->bleServer->getServiceByUUID(BLE_SERVICE_MAIN_ADDR);
         NimBLECharacteristic *pChr = pSvc->getCharacteristic(BLE_CHAR_SCAN_WIFI_ADDR);
@@ -168,7 +168,7 @@ void NetworkManager::taskScanWifi(void *pvParameters)
         for (int i = 0; i < n; ++i)
         {
             std::string wifiName(WiFi.SSID(i).c_str());
-            DBG(wifiName.c_str());
+            DBG_S(wifiName.c_str());
             pChr->setValue(wifiName);
             pChr->notify();
             delay(10);
@@ -177,7 +177,7 @@ void NetworkManager::taskScanWifi(void *pvParameters)
         pChr->setValue('+');
         pChr->notify();
 
-        DBG("Done WiFi scanning.");
+        DBG_S("Done WiFi scanning.");
     }
 }
 
@@ -211,12 +211,12 @@ void NetworkManager::taskNotifyIpChange(void *pvParameters)
         {
             std::string ip(WiFi.localIP().toString().c_str());
             pChr->setValue(ip);
-            DBG("Connect to WiFi successfully. ");
-            DBG_S2("IP:", ip.c_str());
+            DBG_S("Connect to WiFi successfully. ");
+            DBG("IP: %s", ip.c_str());
             
             #if OSK_DEBUG_USE_TELNET
                 telnet.begin(23);
-                DBG("Telnet server started.");
+                DBG_S("Telnet server started.");
             #endif
         }
         else
