@@ -31,34 +31,33 @@ void NetworkManager::init(NetworkManagerSettings *settings)
 
 NetworkManager::NetworkManager()
 {
-    DEBUG_MSG("Chip Revision: ");
-    DEBUG_MSG_NL(ESP.getChipRevision());
+    DBG_S2("Chip Revision: ", ESP.getChipRevision());
 
     char buffer[12];
     uint64_t chipid = ESP.getEfuseMac();
     sprintf(buffer, "%04X%08X", (uint16_t)(chipid >> 32), (uint32_t)chipid);
-    DEBUG_MSG("ESP32 Chip ID = ");
-    DEBUG_MSG_NL(buffer);
+    DBG_S2("ESP32 Chip ID = ", buffer);
 
-    DEBUG_MSG("Flash chip size: ");
-    DEBUG_MSG_NL(ESP.getFlashChipSize());
+    DBG_S2("Flash chip size: ", ESP.getFlashChipSize());
 
-    DEBUG_MSG("Flash chip frequency: ");
-    DEBUG_MSG_NL(ESP.getFlashChipSpeed());
+    DBG_S2("Flash chip frequency: ", ESP.getFlashChipSpeed());
 
-    DEBUG_MSG("SDK Version: ");
-    DEBUG_MSG_NL(ESP.getSdkVersion());
+    DBG_S2("SDK Version: ", ESP.getSdkVersion());
 }
 
 void NetworkManager::initBLE()
 {
     char buffer[16];
     uint64_t chipid = ESP.getEfuseMac();
-    sprintf(buffer, "OSK_%04X%08X", (uint16_t)(chipid >> 32), (uint32_t)chipid);
+    sprintf(buffer, "OSK_%08X%04X", (uint32_t)chipid, (uint16_t)(chipid >> 32));
     NimBLEDevice::init(buffer);
 
-    DEBUG_MSG("BLE Name: ");
-    DEBUG_MSG_NL(buffer);
+    DBG_S2("BLE Name: ", buffer);
+
+    // TODO: Add security
+    //NimBLEDevice::setSecurityAuth(true, true, true);
+    //NimBLEDevice::setSecurityPasskey(123456);
+    //NimBLEDevice::setSecurityIOCap(BLE_HS_IO_DISPLAY_ONLY);
 
     bleServer = NimBLEDevice::createServer();
 
@@ -102,6 +101,23 @@ void NetworkManager::initBLE()
         BLE_CHAR_DEBUG_ADDR,
         NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::NOTIFY);
 
+    // Set thermoProfile
+	/*NimBLECharacteristic *pSetThermoProfileCharacteristic = pOSKService->createCharacteristic(
+			BLE_CHAR_SET_TP_ADDR,
+			NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::READ);
+	pSetThermoProfileCharacteristic->setCallbacks(_cbSaveDeviceName);
+
+	/*NimBLECharacteristic *pCountOfCasesCharacteristic = pOSKService->createCharacteristic(
+			BLE_CHAR_SET_COC_ADDR,
+			NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::READ);
+	//pCountOfCasesCharacteristic->setCallbacks(&countOfCasesCallbacks);
+    DEBUG_MSG_NL("Set CUSTOM CHARS new!");
+    */
+    if (_customBLECallback) {
+        DBG("Call callback custom BLE!");
+        _customBLECallback();
+    }
+
     pOSKService->start();
 
     /** Add the services to the advertisement **/
@@ -110,7 +126,7 @@ void NetworkManager::initBLE()
     pAdvertising->setScanResponse(true);
     pAdvertising->start();
 
-    DEBUG_MSG_NL("Advertising Started");
+    DBG("Advertising Started");
 }
 
 void NetworkManager::connect()
@@ -118,7 +134,7 @@ void NetworkManager::connect()
     WiFi.mode(WIFI_STA);
     
     if (strcmp(_settings->getWifiName(), "") != 0) {
-        DEBUG_MSG_NL("Connect to WiFi...");
+        DBG("Connect to WiFi...");
         WiFi.begin(_settings->getWifiName(), _settings->getWifiPassword());
     }
 }
@@ -127,7 +143,7 @@ void NetworkManager::disconnect()
 {
     telnet.stop();
     WiFi.disconnect();
-    DEBUG_MSG_NL("WiFi Disconnected.");
+    DBG("WiFi Disconnected.");
 }
 
 void NetworkManager::taskScanWifi(void *pvParameters)
@@ -140,11 +156,11 @@ void NetworkManager::taskScanWifi(void *pvParameters)
 
         WiFi.mode(WIFI_STA);
 
-        DEBUG_MSG_NL("Start WiFi scanning...");
+        DBG("Start WiFi scanning...");
         
         int n = WiFi.scanNetworks();
 
-        DEBUG_MSG("Found WiFis: ");
+        DBG("Found WiFis: ");
 
         NimBLEService *pSvc = self->bleServer->getServiceByUUID(BLE_SERVICE_MAIN_ADDR);
         NimBLECharacteristic *pChr = pSvc->getCharacteristic(BLE_CHAR_SCAN_WIFI_ADDR);
@@ -152,7 +168,7 @@ void NetworkManager::taskScanWifi(void *pvParameters)
         for (int i = 0; i < n; ++i)
         {
             std::string wifiName(WiFi.SSID(i).c_str());
-            DEBUG_MSG(wifiName.c_str());
+            DBG(wifiName.c_str());
             pChr->setValue(wifiName);
             pChr->notify();
             delay(10);
@@ -161,7 +177,7 @@ void NetworkManager::taskScanWifi(void *pvParameters)
         pChr->setValue('+');
         pChr->notify();
 
-        DEBUG_MSG_NL("Done WiFi scanning.");
+        DBG("Done WiFi scanning.");
     }
 }
 
@@ -195,13 +211,12 @@ void NetworkManager::taskNotifyIpChange(void *pvParameters)
         {
             std::string ip(WiFi.localIP().toString().c_str());
             pChr->setValue(ip);
-            DEBUG_MSG("Connect to WiFi successfully. ");
-            DEBUG_MSG("IP: ");
-            DEBUG_MSG_NL(ip.c_str());
+            DBG("Connect to WiFi successfully. ");
+            DBG_S2("IP:", ip.c_str());
             
-            #if DEBUG_USE_TELNET
+            #if OSK_DEBUG_USE_TELNET
                 telnet.begin(23);
-                DEBUG_MSG_NL("Telnet server started.");
+                DBG("Telnet server started.");
             #endif
         }
         else
@@ -230,5 +245,15 @@ void NetworkManager::debug(const std::string &value)
     pChr->setValue(value);
     pChr->notify();
 
-    DEBUG_MSG_NL(value.c_str());
+    DBG_S(value.c_str());
+}
+
+NimBLEServer *NetworkManager::getBLEServer()
+{
+    return bleServer;
+}
+
+void NetworkManager::addCustomBLEFunc(CustomBLECallback fn)
+{
+    _customBLECallback = fn;
 }
