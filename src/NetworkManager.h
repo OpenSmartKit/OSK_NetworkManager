@@ -30,6 +30,8 @@ extern "C"
 #define BLE_CHAR_IP_ADDR "B005"
 #define BLE_CHAR_DEBUG_ADDR "D001"
 
+typedef std::function<void()> CustomBLECallback;
+
 class NetworkManager : public SaveWiFiPasswordNotifier
 {
 public:
@@ -40,6 +42,8 @@ public:
     void connect();
     void disconnect();
     void debug(const std::string &value);
+    NimBLEServer *getBLEServer();
+    void addCustomBLEFunc(CustomBLECallback fn);
 
 private:
     static NetworkManager *_instance;
@@ -58,6 +62,7 @@ private:
     GetWifiListCallbacks *_cbGetWifiList = nullptr;
     SaveWifiNameCallbacks *_cbSaveWifiName = nullptr;
     SaveWifiPasswordCallbacks *_cbSaveWifiPassword = nullptr;
+    CustomBLECallback _customBLECallback = nullptr;
 
     TaskHandle_t _thScanWifi = nullptr;
 
