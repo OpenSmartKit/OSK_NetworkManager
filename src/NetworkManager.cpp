@@ -137,7 +137,9 @@ void NetworkManager::connect()
 
 void NetworkManager::disconnect()
 {
+#if OSK_DEBUG_USE_TELNET
     telnet.stop();
+#endif
     WiFi.disconnect();
     DBG("WiFi Disconnected.");
 }
