@@ -9,65 +9,29 @@ extern "C"
 #include <functional>
 #include <Arduino.h>
 #include <WiFi.h>
-#include <NimBLEDevice.h>
 #include <NetworkManagerSettings.h>
-#include <callbacks/SaveDeviceNameCallbacks.hpp>
-#include <callbacks/SaveWifiNameCallbacks.hpp>
-#include <callbacks/GetWifiListCallbacks.hpp>
-#include <callbacks/SaveWifiPasswordCallbacks.hpp>
-#include <callbacks/SaveWiFiPasswordNotifier.h>
 #include <Debug.h>
 
-#define INTERNAL_TASK_STACK 10000
-#define INTERNAL_TASK_PRIORITY 3
-#define INTERNAL_TASK_CORE 1
 
-#define BLE_SERVICE_MAIN_ADDR "A001"
-#define BLE_CHAR_SCAN_WIFI_ADDR "B001"
-#define BLE_CHAR_WIFI_NAME_ADDR "B002"
-#define BLE_CHAR_WIFI_PASS_ADDR "B003"
-#define BLE_CHAR_NAME_ADDR "B004"
-#define BLE_CHAR_IP_ADDR "B005"
-#define BLE_CHAR_DEBUG_ADDR "D001"
-
-typedef std::function<void()> CustomBLECallback;
-
-class NetworkManager : public SaveWiFiPasswordNotifier
+class NetworkManager
 {
 public:
     static NetworkManager *getInstance();
     ~NetworkManager();
     void init(NetworkManagerSettings *settings);
-    void initBLE();
     void connect();
     void disconnect();
-    void debug(const std::string &value);
-    NimBLEServer *getBLEServer();
-    void addCustomBLEFunc(CustomBLECallback fn);
 
 private:
     static NetworkManager *_instance;
-
-    static void taskScanWifi(void *pvParameters);
-    static void taskNotifyIpChange(void *pvParameters);
-    static void WiFiEvent(WiFiEvent_t event);
-    
-    NimBLEServer *bleServer;
-    NimBLEService *bleService;
-    NimBLECharacteristic *bleCharacteristic;
-
-    EventGroupHandle_t _eg = nullptr;
     NetworkManagerSettings *_settings = nullptr;
-    SaveDeviceNameCallbacks *_cbSaveDeviceName = nullptr;
-    GetWifiListCallbacks *_cbGetWifiList = nullptr;
-    SaveWifiNameCallbacks *_cbSaveWifiName = nullptr;
-    SaveWifiPasswordCallbacks *_cbSaveWifiPassword = nullptr;
-    CustomBLECallback _customBLECallback = nullptr;
-
-    TaskHandle_t _thScanWifi = nullptr;
-
     NetworkManager();
-    virtual void notifyWifiPaswordReady();
+    void _smartConfigBegin();
+    void _smartConfigCheck();
+    void _WiFiStationConnected();
+    static void _WiFiEvents(WiFiEvent_t event);
+    bool _isSmartConfigStarted = false;
+    TimerHandle_t *_tSmartConfig = nullptr;
 };
 
 #endif
