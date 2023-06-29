@@ -10,13 +10,15 @@ NetworkManager *NetworkManager::getInstance()
     return _instance;
 }
 
-void NetworkManager::init(NetworkManagerSettings *settings)
+void NetworkManager::begin(NetworkManagerSettings *settings, bool useSmartConfig)
 {
     _settings = settings;
     _isSmartConfigStarted = false;
+    _useSmartConfig = _useSmartConfig;
 
-    WiFi.setAutoReconnect(true);
     WiFi.onEvent(_WiFiEvents);
+
+    _connect();
 }
 
 NetworkManager::NetworkManager()
@@ -31,14 +33,14 @@ NetworkManager::NetworkManager()
     DBG("SDK Version: %s", ESP.getSdkVersion());
 }
 
-void NetworkManager::connect()
+void NetworkManager::_connect()
 {
     WiFi.mode(WIFI_STA);
     
     if (strcmp(_settings->getWifiName(), "") != 0) {
         DBG("Connect to WiFi...");
         WiFi.begin(_settings->getWifiName(), _settings->getWifiPassword());
-    } else {
+    } else if (_useSmartConfig) {
         _smartConfigBegin();
     }
 }
@@ -52,8 +54,44 @@ void NetworkManager::disconnect()
     DBG("WiFi Disconnected.");
 }
 
+void NetworkManager::_handleOTA(TimerHandle_t handle)
+{
+    ArduinoOTA.handle();
+}
+
+void NetworkManager::_blinkStatusLed(TimerHandle_t handle)
+{
+    IO *io = IO::getInstance();
+    io->set(OSK_STATUS_LED, !io->get(OSK_STATUS_LED));
+}
+
+void NetworkManager::beginOTA(std::string hostname)
+{
+    if (hostname.length() > 0) {
+        ArduinoOTA.setHostname(hostname.c_str());
+    }
+    ArduinoOTA.begin();
+
+    _tOTA = xTimerCreate("ota", pdMS_TO_TICKS(2000), pdTRUE, (void *)0, reinterpret_cast<TimerCallbackFunction_t>(_handleOTA));
+	xTimerStart(_tOTA, 0);
+}
+
+void NetworkManager::useStatusLedForWiFi()
+{
+    IO *io = IO::getInstance();
+	io->mode(OSK_STATUS_LED, OUTPUT);
+	io->set(OSK_STATUS_LED, LOW);
+
+    _tStatus = xTimerCreate("statusBlink", pdMS_TO_TICKS(STATUS_BLINK_WIFI_DISABLED), pdTRUE, (void *)0, reinterpret_cast<TimerCallbackFunction_t>(_blinkStatusLed));
+	xTimerStart(_tStatus, 0);
+}
+
 void NetworkManager::_WiFiStationConnected()
 {
+    if (_tStatus) {
+        xTimerChangePeriod(_tStatus, pdMS_TO_TICKS(STATUS_BLINK_WIFI_CONNECTED), portMAX_DELAY);
+    }
+
     if (_isSmartConfigStarted && WiFi.status() == WL_CONNECTED) {
         char buffer[32];
         
@@ -70,6 +108,8 @@ void NetworkManager::_WiFiStationConnected()
 
     DBG("WiFi is connected!");
     DBG("IP: %s", WiFi.localIP().toString().c_str());
+
+    WiFi.setAutoReconnect(true);
 }
 
 void NetworkManager::_WiFiEvents(WiFiEvent_t event)
@@ -82,6 +122,9 @@ void NetworkManager::_WiFiEvents(WiFiEvent_t event)
         self->_WiFiStationConnected();
         break;
     default:
+        if (self->_tStatus) {
+            xTimerChangePeriod(self->_tStatus, pdMS_TO_TICKS(STATUS_BLINK_WIFI_DISCONNECTED), portMAX_DELAY);
+        }
         break;
     }
 }
