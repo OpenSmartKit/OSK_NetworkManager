@@ -8,66 +8,47 @@ extern "C"
 }
 #include <functional>
 #include <Arduino.h>
+#include <ArduinoOTA.h>
 #include <WiFi.h>
-#include <NimBLEDevice.h>
 #include <NetworkManagerSettings.h>
-#include <callbacks/SaveDeviceNameCallbacks.hpp>
-#include <callbacks/SaveWifiNameCallbacks.hpp>
-#include <callbacks/GetWifiListCallbacks.hpp>
-#include <callbacks/SaveWifiPasswordCallbacks.hpp>
-#include <callbacks/SaveWiFiPasswordNotifier.h>
 #include <Debug.h>
+#include <IO.h>
 
-#define INTERNAL_TASK_STACK 10000
-#define INTERNAL_TASK_PRIORITY 3
-#define INTERNAL_TASK_CORE 1
+#ifndef STATUS_BLINK_WIFI_CONNECTED
+#define STATUS_BLINK_WIFI_CONNECTED 800
+#endif
+#ifndef STATUS_BLINK_WIFI_DISCONNECTED
+#define STATUS_BLINK_WIFI_DISCONNECTED 200
+#endif
+#ifndef STATUS_BLINK_WIFI_DISABLED
+#define STATUS_BLINK_WIFI_DISABLED 3000
+#endif
 
-#define BLE_SERVICE_MAIN_ADDR "A001"
-#define BLE_CHAR_SCAN_WIFI_ADDR "B001"
-#define BLE_CHAR_WIFI_NAME_ADDR "B002"
-#define BLE_CHAR_WIFI_PASS_ADDR "B003"
-#define BLE_CHAR_NAME_ADDR "B004"
-#define BLE_CHAR_IP_ADDR "B005"
-#define BLE_CHAR_DEBUG_ADDR "D001"
-
-typedef std::function<void()> CustomBLECallback;
-
-class NetworkManager : public SaveWiFiPasswordNotifier
+class NetworkManager
 {
 public:
     static NetworkManager *getInstance();
     ~NetworkManager();
-    void init(NetworkManagerSettings *settings);
-    void initBLE();
-    void connect();
+    void begin(NetworkManagerSettings *settings, bool useSmartConfig = false);
     void disconnect();
-    void debug(const std::string &value);
-    NimBLEServer *getBLEServer();
-    void addCustomBLEFunc(CustomBLECallback fn);
+    void beginOTA(std::string hostname = "");
+    void useStatusLedForWiFi();
 
 private:
     static NetworkManager *_instance;
-
-    static void taskScanWifi(void *pvParameters);
-    static void taskNotifyIpChange(void *pvParameters);
-    static void WiFiEvent(WiFiEvent_t event);
-    
-    NimBLEServer *bleServer;
-    NimBLEService *bleService;
-    NimBLECharacteristic *bleCharacteristic;
-
-    EventGroupHandle_t _eg = nullptr;
     NetworkManagerSettings *_settings = nullptr;
-    SaveDeviceNameCallbacks *_cbSaveDeviceName = nullptr;
-    GetWifiListCallbacks *_cbGetWifiList = nullptr;
-    SaveWifiNameCallbacks *_cbSaveWifiName = nullptr;
-    SaveWifiPasswordCallbacks *_cbSaveWifiPassword = nullptr;
-    CustomBLECallback _customBLECallback = nullptr;
-
-    TaskHandle_t _thScanWifi = nullptr;
-
     NetworkManager();
-    virtual void notifyWifiPaswordReady();
+    void _connect();
+    void _smartConfigBegin();
+    void _smartConfigCheck();
+    void _WiFiStationConnected();
+    static void _handleOTA(TimerHandle_t handle);
+    static void _blinkStatusLed(TimerHandle_t handle);
+    static void _WiFiEvents(WiFiEvent_t event);
+    bool _isSmartConfigStarted = false;
+    bool _useSmartConfig = false;
+    TimerHandle_t _tOTA = nullptr;
+    TimerHandle_t _tStatus = nullptr;
 };
 
 #endif
