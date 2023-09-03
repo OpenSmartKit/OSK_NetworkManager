@@ -12,7 +12,6 @@ extern "C"
 #include <WiFi.h>
 #include <NetworkManagerSettings.h>
 #include <Debug.h>
-#include <IO.h>
 
 #ifndef STATUS_BLINK_WIFI_CONNECTED
 #define STATUS_BLINK_WIFI_CONNECTED 800
@@ -32,7 +31,8 @@ public:
     void begin(NetworkManagerSettings *settings, bool useSmartConfig = false);
     void disconnect();
     void beginOTA(std::string hostname = "");
-    void useStatusLedForWiFi();
+    void useStatusLedForWiFi(uint8_t statusPin = 2);
+    uint8_t _statusPin;
 
 private:
     static NetworkManager *_instance;

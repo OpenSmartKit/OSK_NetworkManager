@@ -14,7 +14,7 @@ void NetworkManager::begin(NetworkManagerSettings *settings, bool useSmartConfig
 {
     _settings = settings;
     _isSmartConfigStarted = false;
-    _useSmartConfig = _useSmartConfig;
+    _useSmartConfig = useSmartConfig;
 
     WiFi.onEvent(_WiFiEvents);
 
@@ -36,7 +36,7 @@ NetworkManager::NetworkManager()
 void NetworkManager::_connect()
 {
     WiFi.mode(WIFI_STA);
-    
+
     if (strcmp(_settings->getWifiName(), "") != 0) {
         DBG("Connect to WiFi...");
         WiFi.begin(_settings->getWifiName(), _settings->getWifiPassword());
@@ -61,8 +61,8 @@ void NetworkManager::_handleOTA(TimerHandle_t handle)
 
 void NetworkManager::_blinkStatusLed(TimerHandle_t handle)
 {
-    IO *io = IO::getInstance();
-    io->set(OSK_STATUS_LED, !io->get(OSK_STATUS_LED));
+    NetworkManager *nm = NetworkManager::getInstance();
+    digitalWrite(nm->_statusPin, !digitalRead(nm->_statusPin));
 }
 
 void NetworkManager::beginOTA(std::string hostname)
@@ -76,11 +76,11 @@ void NetworkManager::beginOTA(std::string hostname)
 	xTimerStart(_tOTA, 0);
 }
 
-void NetworkManager::useStatusLedForWiFi()
+void NetworkManager::useStatusLedForWiFi(uint8_t statusPin)
 {
-    IO *io = IO::getInstance();
-	io->mode(OSK_STATUS_LED, OUTPUT);
-	io->set(OSK_STATUS_LED, LOW);
+    _statusPin = statusPin;
+    pinMode(_statusPin, OUTPUT);
+    digitalWrite(_statusPin, LOW);
 
     _tStatus = xTimerCreate("statusBlink", pdMS_TO_TICKS(STATUS_BLINK_WIFI_DISABLED), pdTRUE, (void *)0, reinterpret_cast<TimerCallbackFunction_t>(_blinkStatusLed));
 	xTimerStart(_tStatus, 0);
@@ -132,10 +132,12 @@ void NetworkManager::_WiFiEvents(WiFiEvent_t event)
 void NetworkManager::_smartConfigBegin()
 {
     DBG("Start SmartConfig.");
-    //Init WiFi as Station
-    WiFi.mode(WIFI_AP_STA);
 
     //Start SmartConfig
-    WiFi.beginSmartConfig();
-    _isSmartConfigStarted = true;
+    if (WiFi.beginSmartConfig()) {
+        DBG("SmartConfig Started Successfully.");
+        _isSmartConfigStarted = true;
+    } else {
+        DBG("SmartConfig Failed.");
+    }
 }
