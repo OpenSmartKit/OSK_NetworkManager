@@ -110,6 +110,10 @@ void NetworkManager::_WiFiStationConnected()
     DBG("IP: %s", WiFi.localIP().toString().c_str());
 
     WiFi.setAutoReconnect(true);
+
+#if OSK_DEBUG_USE_TELNET
+    telnet.begin();
+#endif
 }
 
 void NetworkManager::_WiFiEvents(WiFiEvent_t event)
